@@ -8,6 +8,12 @@ function Home() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -42,9 +48,13 @@ function Home() {
         <Link to="/cart" className="btn btn-outline-secondary">
           View Cart 🛒
         </Link>
-        <Link to="/login" className="btn btn-outline-secondary">
+        {!isLoggedIn ? (<Link to="/login" className="btn btn-outline-secondary">
           login
-        </Link>
+        </Link>) : (<div><img
+                  src="./profile-icon-design-free-vector.jpg"
+                  alt="Profile"
+                  style={{ width: "40px", height: "40px", borderRadius: "50%" }}
+        /></div>)}
       </div>
 
       {/* Loading and Error */}

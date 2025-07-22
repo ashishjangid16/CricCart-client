@@ -9,6 +9,13 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [Logout, setLogout] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsLoggedIn(false);
+    setLogout(true);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -43,18 +50,27 @@ function Home() {
     <div className="container py-5">
       <h2 className="text-center mb-4">All Products</h2>
 
-      {/* View Cart Button */}
+   
       <div className="text-end mb-4">
         <Link to="/cart" className="btn btn-outline-secondary">
           View Cart 🛒
         </Link>
-        {!isLoggedIn ? (<Link to="/login" className="btn btn-outline-secondary">
-          login
-        </Link>) : (<div><img
-                  src="./profile-icon-design-free-vector.jpg"
-                  alt="Profile"
-                  style={{ width: "40px", height: "40px", borderRadius: "50%" }}
-        /></div>)}
+        {!isLoggedIn ? (
+  <Link to="/login" className="btn btn-outline-secondary ms-2">
+    Login
+  </Link>
+) : (
+  <div className="d-inline-flex align-items-center gap-2">
+    <img
+      src="./profile-icon-design-free-vector.jpg"
+      alt="Profile"
+      style={{ width: "40px", height: "40px", borderRadius: "50%" }}
+    />
+    <button onClick={handleLogout} className="btn btn-outline-danger">
+      Logout
+    </button>
+  </div>
+)}
       </div>
 
       {/* Loading and Error */}

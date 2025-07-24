@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useCart } from "../context/CartContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 function Home() {
   const [products, setProducts] = useState([]);
@@ -9,12 +9,16 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [Logout, setLogout] = useState(false);
+  const navigate = useNavigate();
+
+  const goToOrders = () => {
+    navigate("/my-orders");
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsLoggedIn(false);
-    setLogout(true);
+
   };
 
   useEffect(() => {
@@ -27,7 +31,6 @@ function Home() {
       try {
         const res = await axios.get("http://localhost:8000/api/products");
 
-        // Use res.data directly if it's already an array
         const fetchedProducts = Array.isArray(res.data)
           ? res.data
           : [];
@@ -41,43 +44,54 @@ function Home() {
         setLoading(false);
       }
     };
+
     fetchProducts();
-    const token = localStorage.getItem("token");
-    console.log(token);
   }, []);
 
   return (
     <div className="container py-5">
-      <h2 className="text-center mb-4">All Products</h2>
+      <h1 className="text-2xl font-bold mb-4">Welcome to Our Store!</h1>
 
-   
+      
+      {isLoggedIn && (
+        <div className="mb-4 text-end">
+          <button
+            onClick={goToOrders}
+            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
+          >
+            My Orders
+          </button>
+        </div>
+      )}
+
       <div className="text-end mb-4">
         <Link to="/cart" className="btn btn-outline-secondary">
           View Cart 🛒
         </Link>
+
         {!isLoggedIn ? (
-  <Link to="/login" className="btn btn-outline-secondary ms-2">
-    Login
-  </Link>
-) : (
-  <div className="d-inline-flex align-items-center gap-2">
-    <img
-      src="./profile-icon-design-free-vector.jpg"
-      alt="Profile"
-      style={{ width: "40px", height: "40px", borderRadius: "50%" }}
-    />
-    <button onClick={handleLogout} className="btn btn-outline-danger">
-      Logout
-    </button>
-  </div>
-)}
+          <Link to="/login" className="btn btn-outline-secondary ms-2">
+            Login
+          </Link>
+        ) : (
+          <div className="d-inline-flex align-items-center gap-2 ms-2">
+            <img
+              src="./profile-icon-design-free-vector.jpg"
+              alt="Profile"
+              style={{ width: "40px", height: "40px", borderRadius: "50%" }}
+            />
+            <button onClick={handleLogout} className="btn btn-outline-danger">
+              Logout
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Loading and Error */}
       {loading && <div className="text-center">Loading products...</div>}
       {error && <div className="alert alert-danger text-center">{error}</div>}
 
-      {/* Product Grid */}
+      <h2 className="text-center mb-4">All Products</h2>
+
       <div className="row">
         {products.map((product) => (
           <div key={product._id} className="col-md-4 mb-4">

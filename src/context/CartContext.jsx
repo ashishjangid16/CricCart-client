@@ -74,8 +74,8 @@ export const CartProvider = ({ children }) => {
     >
       {children}
     </CartContext.Provider>
-  );
-};
+  ); {/*important*/}
+};   
 
 
 export const useCart = () => useContext(CartContext);

@@ -18,7 +18,6 @@ function Home() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsLoggedIn(false);
-
   };
 
   useEffect(() => {
@@ -49,15 +48,23 @@ function Home() {
   }, []);
 
   return (
-    <div className="container py-5">
+    <div
+      className="container py-5"
+      style={{
+        //backgroundImage: "url('/Background.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        minHeight: "100vh",
+      }}
+    >
       <h1 className="text-2xl font-bold mb-4">Welcome to Our Store!</h1>
 
-      
       {isLoggedIn && (
         <div className="mb-4 text-end">
           <button
             onClick={goToOrders}
-            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
+            className="bg-yellow-1000 text-white-300 px-4 py-2 rounded shadow hover:bg-gray-900"
           >
             My Orders
           </button>
@@ -65,7 +72,7 @@ function Home() {
       )}
 
       <div className="text-end mb-4">
-        <Link to="/cart" className="btn btn-outline-secondary">
+        <Link to="/cart" className="btn btn-outline-secondary ms-2">
           View Cart 🛒
         </Link>
 

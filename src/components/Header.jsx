@@ -17,7 +17,7 @@ export default function Header() {
     <nav className="navbar navbar-dark" style={{ backgroundColor: "#1a472a" }}>
       <div className="container">
         <Link to="/" className="navbar-brand fw-bold" style={{ fontSize: "24px", color: "#4ade80 !important" }}>
-          🏪 CricCart
+          🏏 CricCart
         </Link>
 
         <div className="d-flex align-items-center gap-2">

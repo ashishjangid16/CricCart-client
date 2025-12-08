@@ -136,12 +136,18 @@ function Cart() {
                   <div key={item._id} className="col-md-4">
                     <div className="card h-100 shadow-sm">
                       <div style={{ height: "180px", overflow: "hidden", backgroundColor: "#f0f0f0" }}>
-                        <img
-                          src={item.image || item.imageUrl}
-                          className="card-img-top"
-                          alt={item.title}
-                          style={{ height: "100%", objectFit: "cover" }}
-                        />
+                        {(() => {
+                          const placeholder = "https://via.placeholder.com/600x400?text=Cricket+Product";
+                          const imgSrc = item.image || item.imageUrl || (item.imageUrl && item.imageUrl.secure_url) || placeholder;
+                          return (
+                            <img
+                              src={imgSrc}
+                              className="card-img-top"
+                              alt={item.title}
+                              style={{ height: "100%", objectFit: "cover" }}
+                            />
+                          );
+                        })()}
                       </div>
                       <div className="card-body d-flex flex-column">
                         <h5 className="card-title">{item.title}</h5>
@@ -325,7 +331,7 @@ function Cart() {
             </div>
           </>
         )}
-      </div>  {/* FIXED: missing closing div for container */}
+      </div>  
     </div>
   );
 }

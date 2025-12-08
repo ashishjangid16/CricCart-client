@@ -17,7 +17,7 @@ function Login() {
         password,
       });
 
-      // ✅ Save token to localStorage here
+      //Save token to localStorage here
       localStorage.setItem("token", res.data.token);
 
       setError("");

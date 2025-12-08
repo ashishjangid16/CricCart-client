@@ -34,11 +34,16 @@ function Home() {
   // Get unique categories
   const categories = ["All", ...new Set(products.map((p) => p.category))];
 
-  // Filter products
+  // Filter products (search matches title, description, or category)
   const filteredProducts = products.filter((product) => {
+    const q = (searchTerm || "").trim().toLowerCase();
+
     const matchesSearch =
-      product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      !q ||
+      product.title?.toLowerCase().includes(q) ||
+      product.description?.toLowerCase().includes(q) ||
+      product.category?.toLowerCase().includes(q);
+
     const matchesCategory = !category || category === "All" || product.category === category;
     return matchesSearch && matchesCategory;
   });
@@ -48,7 +53,7 @@ function Home() {
       <div className="container py-5">
         {/* Hero Section */}
         <div className="text-center mb-5" style={{ backgroundColor: "#4ade80", padding: "30px", borderRadius: "10px", color: "white" }}>
-          <h1 className="display-4 fw-bold">🏪 Welcome to CricCart</h1>
+          <h1 className="display-4 fw-bold">🏏 Welcome to CricCart</h1>
           <p className="lead">Your one-stop shop for the best products</p>
         </div>
 
@@ -109,17 +114,20 @@ function Home() {
               {filteredProducts.map((product) => (
                 <div key={product._id} className="col-md-4 col-lg-3">
                   <div className="card h-100 shadow-sm" style={{ transition: "transform 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-5px)"} onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}>
-                    <div style={{ overflow: "hidden", height: "200px", backgroundColor: "#f0f0f0" }}>
-                      <img
-                        src={
-                          product.imageUrl ||
-                          "https://res.cloudinary.com/dipl3qujh/image/upload/v1752663541/Ecommerce/sye8hf3szdgx8rezpy29.png"
-                        }
-                        className="card-img-top"
-                        alt={product.title}
-                        style={{ height: "100%", objectFit: "cover" }}
-                      />
-                    </div>
+                            <div style={{ overflow: "hidden", height: "200px", backgroundColor: "#f0f0f0" }}>
+                              {(() => {
+                                const placeholder = "https://via.placeholder.com/600x400?text=Cricket+Product";
+                                const imgSrc = product.imageUrl || product.image || (product.imageUrl && product.imageUrl.secure_url) || placeholder;
+                                return (
+                                  <img
+                                    src={imgSrc}
+                                    className="card-img-top"
+                                    alt={product.title}
+                                    style={{ height: "100%", objectFit: "cover" }}
+                                  />
+                                );
+                              })()}
+                            </div>
                     <div className="card-body d-flex flex-column">
                       <h5 className="card-title" style={{ minHeight: "50px" }}>
                         {product.title}

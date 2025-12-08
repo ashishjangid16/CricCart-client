@@ -1,4 +1,3 @@
-// src/context/CartContext.jsx
 import axios from "axios";
 import { createContext, useContext, useState, useEffect } from "react";
 

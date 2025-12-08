@@ -124,6 +124,10 @@ function Home() {
                                     className="card-img-top"
                                     alt={product.title}
                                     style={{ height: "100%", objectFit: "cover" }}
+                                    onError={(e) => {
+                                      e.currentTarget.onerror = null;
+                                      e.currentTarget.src = 'https://via.placeholder.com/600x400?text=No+Image';
+                                    }}
                                   />
                                 );
                               })()}

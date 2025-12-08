@@ -61,7 +61,7 @@ function Cart() {
       setOrderSuccess(true);
       clearCart();
       setShowCheckout(false);
-
+      // reset address
       setName("");
       setPhone("");
       setAddress1("");
@@ -80,46 +80,59 @@ function Cart() {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f8f9fa", paddingTop: "20px" }}>
-      <div className="container py-4">   {/* OPENED HERE */}
-
+      <div className="container py-4">
         <h2 className="text-center mb-4" style={{ color: "#1a472a", fontSize: "32px" }}>
           🛒 Your Shopping Cart
         </h2>
 
         {orderSuccess && (
-          <div className="alert alert-success text-center">
-            ✅ Order placed successfully!
+          <div className="alert alert-success text-center shadow-sm" role="alert">
+            <h4>✅ Order Placed Successfully!</h4>
+            <p>Thank you for your purchase. You can check your order details in My Orders.</p>
+            <Link to="/my-orders" className="btn btn-success mt-2">
+              View My Orders
+            </Link>
           </div>
         )}
 
-        <div className="mb-3 d-flex justify-content-between align-items-center">
-          <div className="w-50">
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Search items in cart..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <button
-              className="btn btn-outline-secondary me-2"
-              onClick={() => setShowCheckout((s) => !s)}
-            >
-              {showCheckout ? "Hide Checkout" : "Checkout"}
-            </button>
-            <button className="btn btn-danger" onClick={clearCart}>
-              Clear Cart 🗑️
-            </button>
-          </div>
-        </div>
-
         {cartItems.length === 0 ? (
-          <p className="text-center">No items in cart.</p>
+          <div className="text-center py-5">
+            <h4 style={{ color: "#666" }}>Your cart is empty</h4>
+            <p className="text-muted">Start shopping to add items to your cart</p>
+            <Link to="/" className="btn btn-success" style={{ backgroundColor: "#4ade80", borderColor: "#4ade80" }}>
+              🛍️ Continue Shopping
+            </Link>
+          </div>
         ) : (
           <>
+            {/* Search & Action Bar */}
+            <div className="card shadow-sm mb-4">
+              <div className="card-body">
+                <div className="row align-items-center g-3">
+                  <div className="col-md-8">
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="🔍 Search items in cart..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-md-4 text-end">
+                    <button
+                      className="btn btn-outline-secondary me-2"
+                      onClick={() => setShowCheckout((s) => !s)}
+                    >
+                      {showCheckout ? "Hide Checkout" : "Checkout"}
+                    </button>
+                    <button className="btn btn-danger" onClick={clearCart}>
+                      🗑️ Clear Cart
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Cart Items */}
             <div className="row g-4 mb-4">
               {cartItems
@@ -216,7 +229,6 @@ function Cart() {
                     {showCheckout && (
                       <form onSubmit={handlePlaceOrder} className="mt-4">
                         <h6 className="mb-3">Delivery Address</h6>
-
                         <div className="mb-2">
                           <input
                             required
@@ -226,7 +238,6 @@ function Cart() {
                             onChange={(e) => setName(e.target.value)}
                           />
                         </div>
-
                         <div className="mb-2">
                           <input
                             required
@@ -236,7 +247,6 @@ function Cart() {
                             onChange={(e) => setPhone(e.target.value)}
                           />
                         </div>
-
                         <div className="mb-2">
                           <input
                             required
@@ -246,7 +256,6 @@ function Cart() {
                             onChange={(e) => setAddress1(e.target.value)}
                           />
                         </div>
-
                         <div className="mb-2">
                           <input
                             className="form-control form-control-sm"
@@ -255,7 +264,6 @@ function Cart() {
                             onChange={(e) => setAddress2(e.target.value)}
                           />
                         </div>
-
                         <div className="row g-2 mb-2">
                           <div className="col-6">
                             <input
@@ -276,7 +284,6 @@ function Cart() {
                             />
                           </div>
                         </div>
-
                         <div className="mb-2">
                           <input
                             required
@@ -286,7 +293,6 @@ function Cart() {
                             onChange={(e) => setPincode(e.target.value)}
                           />
                         </div>
-
                         <div className="mb-3">
                           <textarea
                             className="form-control form-control-sm"
@@ -297,12 +303,7 @@ function Cart() {
                           />
                         </div>
 
-                        <button
-                          type="submit"
-                          className="btn w-100"
-                          style={{ backgroundColor: "#4ade80", color: "white", fontWeight: "bold" }}
-                          disabled={loading}
-                        >
+                        <button type="submit" className="btn w-100" style={{ backgroundColor: "#4ade80", color: "white", fontWeight: "bold" }} disabled={loading}>
                           {loading ? "⏳ Placing Order..." : "✅ Place Order"}
                         </button>
                       </form>
@@ -318,14 +319,13 @@ function Cart() {
                         🔐 Proceed to Checkout
                       </button>
                     )}
-
                   </div>
                 </div>
               </div>
             </div>
           </>
         )}
-      </div>  {/* FIXED: missing closing div for container */}
+      </div>
     </div>
   );
 }

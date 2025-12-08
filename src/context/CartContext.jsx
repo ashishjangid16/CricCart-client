@@ -1,4 +1,4 @@
-// src/context/CartContext.js
+// src/context/CartContext.jsx
 import axios from "axios";
 import { createContext, useContext, useState, useEffect } from "react";
 
@@ -6,6 +6,7 @@ const CartContext = createContext();
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
 
+  // Load cart from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem("cartItems");
     if (stored) {
@@ -13,11 +14,29 @@ export const CartProvider = ({ children }) => {
     }
   }, []);
 
+  // Persist cart to localStorage and sync with backend
   useEffect(() => {
     localStorage.setItem("cartItems", JSON.stringify(cartItems));
+    syncCartWithBackend();
   }, [cartItems]);
 
-  const addToCart = async (product) => {
+  const syncCartWithBackend = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token || cartItems.length === 0) return;
+
+      await axios.post("http://localhost:8000/api/cart/sync", { items: cartItems }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+    } catch (error) {
+      console.log("Cart sync skipped (user may not be logged in)");
+    }
+  };
+
+  const addToCart = (product) => {
     setCartItems((prev) => {
       const exists = prev.find((item) => item._id === product._id);
       return exists
@@ -28,19 +47,6 @@ export const CartProvider = ({ children }) => {
           )
         : [...prev, { ...product, quantity: 1 }];
     });
-    try{
-      const token = localStorage.getItem("token")
-      const res = await axios.post("http://localhost:8000/api/cart/add",cartItems,{
-          headers: {
-            Authorization: `Bearer ${token}`, // ✅ send token here
-            "Content-Type": "application/json",
-          },
-        });
-    }
-    catch(error)
-    {
-      console.log(error);
-    }
   };
 
   const increaseQty = (id) => {
@@ -74,8 +80,7 @@ export const CartProvider = ({ children }) => {
     >
       {children}
     </CartContext.Provider>
-  ); {/*important*/}
+  );
 };   
-
 
 export const useCart = () => useContext(CartContext);

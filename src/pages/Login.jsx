@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -44,8 +44,12 @@ function Login() {
           />
         </div>
         <div className="mb-3">
-          <label>Password</label>
+          <div className="d-flex justify-content-between">
+            <label htmlFor="login-password">Password</label>
+            <Link to="/forgot-password">Forgot password?</Link>
+          </div>
           <input
+            id="login-password"
             type="password"
             className="form-control"
             value={password}
@@ -56,6 +60,9 @@ function Login() {
         <button type="submit" className="btn btn-primary w-100">
           Login
         </button>
+        <p className="text-center mt-3 mb-0">
+          New to CricCart? <Link to="/signup">Create an account</Link>
+        </p>
       </form>
     </div>
   );

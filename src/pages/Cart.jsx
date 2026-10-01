@@ -2,9 +2,11 @@ import { useCart } from "../context/CartContext";
 import axios from "axios";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 function Cart() {
   const { cartItems, increaseQty, decreaseQty, removeFromCart, clearCart } = useCart();
+  const navigate = useNavigate();
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -72,7 +74,13 @@ function Cart() {
       setInstructions("");
     } catch (err) {
       console.error("Order failed:", err.response?.data || err.message);
-      alert("Something went wrong while placing the order!");
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        alert("Your login session is invalid or expired. Please log in again.");
+        navigate("/login");
+        return;
+      }
+      alert(err.response?.data?.message || "Something went wrong while placing the order!");
     } finally {
       setLoading(false);
     }

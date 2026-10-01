@@ -11,6 +11,7 @@ const getCategoryIcon = (category) => {
   if (name.includes("ball")) return "🥎";
   if (name.includes("shoe")) return "👟";
   if (name.includes("pad")) return "🦵";
+  if (name.includes("gaurd")) return "🛡️";
   return "🏏";
 };
 
@@ -103,7 +104,7 @@ function Home() {
 
       try {
         const response = await axios.get(
-          `http://localhost:8000/api/products?${params.toString()}`
+          `${process.env.REACT_APP_API_URL}/api/products?${params.toString()}`
         );
         if (!isCurrentRequest) return;
 
@@ -213,7 +214,7 @@ function Home() {
 
     try {
       const response = await axios.post(
-        "http://localhost:8000/api/assistant/chat",
+        `${process.env.REACT_APP_API_URL}/api/assistant/chat`,
         {
           message: trimmedMessage,
 

@@ -26,8 +26,8 @@ function ForgotPassword() {
     setLoading(true);
     try {
       const response = token
-        ? await axios.post("http://localhost:8000/api/auth/reset-password", { token, password })
-        : await axios.post("http://localhost:8000/api/auth/forgot-password", { email });
+        ? await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/reset-password`, { token, password })
+        : await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/forgot-password`, { email });
       setMessage(response.data.message);
       if (token) setResetComplete(true);
     } catch (requestError) {

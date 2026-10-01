@@ -24,7 +24,7 @@ export const CartProvider = ({ children }) => {
       const token = localStorage.getItem("token");
       if (!token || cartItems.length === 0) return;
 
-      await axios.post("http://localhost:8000/api/cart/sync", { items: cartItems }, {
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/cart/sync`, { items: cartItems }, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",

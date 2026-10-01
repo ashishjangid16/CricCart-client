@@ -1,49 +1,70 @@
 import axios from "axios";
-import { createContext, useContext, useState, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 
 const CartContext = createContext();
+
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
 
   // Load cart from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem("cartItems");
+
     if (stored) {
       setCartItems(JSON.parse(stored));
     }
   }, []);
 
+  // Sync cart with backend
+  const syncCartWithBackend = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token || cartItems.length === 0) return;
+
+      await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/cart/sync`,
+        { items: cartItems },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } catch (error) {
+      console.log("Cart sync skipped (user may not be logged in)");
+    }
+  }, [cartItems]);
+
   // Persist cart to localStorage and sync with backend
   useEffect(() => {
     localStorage.setItem("cartItems", JSON.stringify(cartItems));
     syncCartWithBackend();
-  }, [cartItems]);
-
-  const syncCartWithBackend = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token || cartItems.length === 0) return;
-
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/cart/sync`, { items: cartItems }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-    } catch (error) {
-      console.log("Cart sync skipped (user may not be logged in)");
-    }
-  };
+  }, [cartItems, syncCartWithBackend]);
 
   const addToCart = (product) => {
     if (!product.stock || product.stock < 1) return;
 
     setCartItems((prev) => {
       const exists = prev.find((item) => item._id === product._id);
+
       return exists
         ? prev.map((item) =>
             item._id === product._id
-              ? { ...item, quantity: Math.min(item.quantity + 1, product.stock) }
+              ? {
+                  ...item,
+                  quantity: Math.min(
+                    item.quantity + 1,
+                    product.stock
+                  ),
+                }
               : item
           )
         : [...prev, { ...product, quantity: 1 }];
@@ -54,7 +75,13 @@ export const CartProvider = ({ children }) => {
     setCartItems((prev) =>
       prev.map((item) =>
         item._id === id
-          ? { ...item, quantity: Math.min(item.quantity + 1, item.stock || item.quantity) }
+          ? {
+              ...item,
+              quantity: Math.min(
+                item.quantity + 1,
+                item.stock || item.quantity
+              ),
+            }
           : item
       )
     );
@@ -73,17 +100,26 @@ export const CartProvider = ({ children }) => {
   };
 
   const removeFromCart = (id) =>
-    setCartItems((prev) => prev.filter((item) => item._id !== id));
+    setCartItems((prev) =>
+      prev.filter((item) => item._id !== id)
+    );
 
   const clearCart = () => setCartItems([]);
 
   return (
     <CartContext.Provider
-      value={{ cartItems, addToCart, removeFromCart, increaseQty, decreaseQty, clearCart }}
+      value={{
+        cartItems,
+        addToCart,
+        removeFromCart,
+        increaseQty,
+        decreaseQty,
+        clearCart,
+      }}
     >
       {children}
     </CartContext.Provider>
   );
-};   
+};
 
 export const useCart = () => useContext(CartContext);

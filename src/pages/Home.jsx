@@ -1,80 +1,252 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useCart } from "../context/CartContext";
+import "./Home.css";
+
+const getCategoryIcon = (category) => {
+  const name = String(category).toLowerCase();
+  if (name.includes("bat")) return "🏏";
+  if (name.includes("glove")) return "🧤";
+  if (name.includes("helmet")) return "🪖";
+  if (name.includes("ball")) return "🥎";
+  if (name.includes("shoe")) return "👟";
+  if (name.includes("pad")) return "🦵";
+  return "🏏";
+};
+
+function ProductCard({ product, onAddToCart, featured = false }) {
+  const imageUrl =
+    product.imageUrl?.secure_url ||
+    product.imageUrl ||
+    product.image ||
+    "https://via.placeholder.com/600x400?text=Cricket+Product";
+  const inStock = Number(product.stock) > 0;
+
+  return (
+    <article className={`cc-product-card${featured ? " cc-product-card-featured" : ""}`}>
+      <div className="cc-product-image-wrap">
+        <img
+          className="cc-product-image"
+          src={imageUrl}
+          alt={product.title}
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = "https://via.placeholder.com/600x400?text=No+Image";
+          }}
+        />
+        <span className="cc-product-category">{product.category}</span>
+      </div>
+      <div className="cc-product-info">
+        <h3>{product.title}</h3>
+        {!featured && <p>{product.description?.slice(0, 90) || "Cricket gear for your next innings."}</p>}
+        <div className="cc-product-meta">
+          <strong>₹{product.price}</strong>
+          <span className={inStock ? "cc-stock-in" : "cc-stock-out"}>
+            {inStock ? `${product.stock} in stock` : "Sold out"}
+          </span>
+        </div>
+        <button type="button" onClick={() => onAddToCart(product)} disabled={!inStock}>
+          {inStock ? "Add to cart" : "Out of stock"}
+        </button>
+      </div>
+    </article>
+  );
+}
 
 function Home() {
   const [products, setProducts] = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const hasLoadedProducts = useRef(false);
+
+  // Search and category filters
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("");
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+
+  // AI Assistant
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantInput, setAssistantInput] = useState("");
   const [assistantLoading, setAssistantLoading] = useState(false);
+
   const [chatMessages, setChatMessages] = useState([
     {
       sender: "bot",
       text: "Hi! I can help you find the right cricket gear, accessories, and best deals.",
     },
   ]);
+
   const { addToCart } = useCart();
 
+
+  /* =========================================================
+     FETCH PRODUCTS
+     ========================================================= */
+
   useEffect(() => {
-    const fetchProducts = async () => {
+    let isCurrentRequest = true;
+    if (!hasLoadedProducts.current) setLoading(true);
+
+    const timeoutId = setTimeout(async () => {
+      const params = new URLSearchParams({ page: String(currentPage) });
+      if (searchTerm.trim()) params.set("search", searchTerm.trim());
+      if (category) params.set("category", category);
+
       try {
-        const res = await axios.get("http://localhost:8000/api/products");
-        const fetchedProducts = Array.isArray(res.data) ? res.data : [];
-        setProducts(fetchedProducts);
+        const response = await axios.get(
+          `http://localhost:8000/api/products?${params.toString()}`
+        );
+        if (!isCurrentRequest) return;
+
+        setProducts(Array.isArray(response.data.products) ? response.data.products : []);
+        const categoryProducts =
+          Array.isArray(response.data.featuredProducts)
+            ? response.data.featuredProducts
+            : response.data.products?.slice(0, 4) || [];
+        const mrfBat = response.data.heroProduct;
+        setFeaturedProducts(
+          mrfBat
+            ? [mrfBat, ...categoryProducts.filter((product) => product.category !== mrfBat.category)]
+            : categoryProducts,
+        );
+        setHeroIndex(0);
+        setTotalPages(response.data.totalPages || 1);
+        setTotalProducts(response.data.totalProducts || 0);
+        setCategoryOptions(Array.isArray(response.data.categories) ? response.data.categories : []);
         setError("");
-      } catch (err) {
-        console.error("Product fetch failed:", err);
+      } catch (requestError) {
+        if (!isCurrentRequest) return;
+        console.error("Product fetch failed:", requestError);
         setError("Failed to load products");
       } finally {
-        setLoading(false);
+        if (isCurrentRequest) {
+          hasLoadedProducts.current = true;
+          setLoading(false);
+        }
       }
+    }, searchTerm.trim() ? 500 : 0);
+
+    return () => {
+      isCurrentRequest = false;
+      clearTimeout(timeoutId);
     };
+  }, [currentPage, searchTerm, category]);
 
-    fetchProducts();
-  }, []);
+  useEffect(() => {
+    if (featuredProducts.length < 2 || heroPaused) return undefined;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return undefined;
 
-  const categories = ["All", ...new Set(products.map((p) => p.category))];
+    const rotationTimer = setInterval(() => {
+      setHeroIndex((index) => (index + 1) % featuredProducts.length);
+    }, 6000);
 
-  const filteredProducts = products.filter((product) => {
-    const q = (searchTerm || "").trim().toLowerCase();
+    return () => clearInterval(rotationTimer);
+  }, [featuredProducts.length, heroPaused]);
 
-    const matchesSearch =
-      !q ||
-      product.title?.toLowerCase().includes(q) ||
-      product.description?.toLowerCase().includes(q) ||
-      product.category?.toLowerCase().includes(q);
 
-    const matchesCategory = !category || category === "All" || product.category === category;
-    return matchesSearch && matchesCategory;
+  /* =========================================================
+     CATEGORIES
+     ========================================================= */
+
+  const categoryOrder = ["Bats", "Gloves", "Helmets", "Balls", "Cricket Shoes", "Shoes", "Pads"];
+  const displayCategories = [...categoryOptions].sort((left, right) => {
+    const leftIndex = categoryOrder.indexOf(left);
+    const rightIndex = categoryOrder.indexOf(right);
+    if (leftIndex === -1 && rightIndex === -1) return left.localeCompare(right);
+    if (leftIndex === -1) return 1;
+    if (rightIndex === -1) return -1;
+    return leftIndex - rightIndex;
   });
+  const categories = ["All", ...categoryOptions];
+  const selectedHeroProduct = featuredProducts[heroIndex] || products[0];
+
+  const moveHero = (direction) => {
+    setHeroIndex((index) =>
+      (index + direction + featuredProducts.length) % featuredProducts.length,
+    );
+  };
+
+  const selectCategory = (selectedCategory) => {
+    setCategory(selectedCategory);
+    setCurrentPage(1);
+    document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+
+  /* =========================================================
+     SEARCH + CATEGORY FILTER
+     ========================================================= */
+
+  const filteredProducts = products;
+
+
+  /* =========================================================
+     AI ASSISTANT
+     ========================================================= */
 
   const sendAssistantMessage = async () => {
     const trimmedMessage = assistantInput.trim();
+
     if (!trimmedMessage || assistantLoading) return;
 
-    const userMessage = { sender: "user", text: trimmedMessage };
-    setChatMessages((prev) => [...prev, userMessage]);
+    const userMessage = {
+      sender: "user",
+      text: trimmedMessage,
+    };
+
+    setChatMessages((prev) => [
+      ...prev,
+      userMessage,
+    ]);
+
     setAssistantInput("");
     setAssistantLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:8000/api/assistant/chat", {
-        message: trimmedMessage,
-        conversationHistory: chatMessages.slice(-20).map((entry) => ({
-          role: entry.sender === "bot" ? "assistant" : "user",
-          text: entry.text,
-        })),
-      });
+      const response = await axios.post(
+        "http://localhost:8000/api/assistant/chat",
+        {
+          message: trimmedMessage,
 
-      const reply = response?.data?.reply || "I’m sorry, I couldn’t answer that right now.";
-      setChatMessages((prev) => [...prev, { sender: "bot", text: reply }]);
+          conversationHistory: chatMessages
+            .slice(-20)
+            .map((entry) => ({
+              role:
+                entry.sender === "bot"
+                  ? "assistant"
+                  : "user",
+              text: entry.text,
+            })),
+        }
+      );
+
+      const reply =
+        response?.data?.reply ||
+        "I’m sorry, I couldn’t answer that right now.";
+
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: reply,
+        },
+      ]);
     } catch (err) {
-      const backendMessage = err?.response?.data?.message;
-      const backendError = err?.response?.data?.error;
+      const backendMessage =
+        err?.response?.data?.message;
+
+      const backendError =
+        err?.response?.data?.error;
+
       const detailedError =
         typeof backendError === "string"
           ? backendError
@@ -85,262 +257,491 @@ function Home() {
       let userMessage =
         "I’m having trouble connecting to the AI service. Please try again in a moment.";
 
-      if (detailedError.includes("API_KEY_SERVICE_BLOCKED") || detailedError.includes("PERMISSION_DENIED")) {
+      if (
+        detailedError.includes(
+          "API_KEY_SERVICE_BLOCKED"
+        ) ||
+        detailedError.includes(
+          "PERMISSION_DENIED"
+        )
+      ) {
         userMessage =
           "The Gemini API key is blocked or disabled in Google Cloud. Please enable the Generative Language API and use a valid key in the backend .env file.";
       } else if (backendMessage) {
         userMessage = backendMessage;
       }
 
-      setChatMessages((prev) => [...prev, { sender: "bot", text: userMessage }]);
-      console.error("Assistant chat failed:", err);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: userMessage,
+        },
+      ]);
+
+      console.error(
+        "Assistant chat failed:",
+        err
+      );
     } finally {
       setAssistantLoading(false);
     }
   };
+
 
   const handleAssistantSubmit = (event) => {
     event.preventDefault();
     sendAssistantMessage();
   };
 
+
+  /* =========================================================
+     UI
+     ========================================================= */
+
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f8f9fa" }}>
-      <div className="container py-5">
-        <div
-          className="text-center mb-5"
-          style={{ backgroundColor: "#4ade80", padding: "30px", borderRadius: "10px", color: "white" }}
-        >
-          <h1 className="display-4 fw-bold">🏏 Welcome to CricCart</h1>
-          <p className="lead">Your one-stop shop for the best products</p>
-        </div>
+    <main className="cc-home">
+      <div className="cc-home-shell">
+        {selectedHeroProduct && (
+          <section className="cc-hero" aria-label="Featured cricket products" aria-roledescription="carousel">
+            <div className="cc-hero-copy" key={`copy-${selectedHeroProduct._id}`}>
+              <p className="cc-eyebrow">Featured {selectedHeroProduct.category}</p>
+              <h1>{selectedHeroProduct.title}</h1>
+              <p>{selectedHeroProduct.description || "Find the right equipment for your next innings."}</p>
+              <p className="cc-hero-price">Featured pick <strong>₹{selectedHeroProduct.price?.toLocaleString("en-IN")}</strong></p>
+              <div className="cc-hero-actions">
+                <a href="#products">Shop now</a>
+                <a className="cc-hero-secondary" href="#categories">Explore gear</a>
+              </div>
+            </div>
+            <div className="cc-hero-media" key={`media-${selectedHeroProduct._id}`}>
+              <img
+                src={selectedHeroProduct.imageUrl?.secure_url || selectedHeroProduct.imageUrl || selectedHeroProduct.image}
+                alt={selectedHeroProduct.title}
+                fetchPriority="high"
+                onError={(event) => {
+                  event.currentTarget.onerror = null;
+                  event.currentTarget.src = "https://via.placeholder.com/900x700?text=CricCart+Gear";
+                }}
+              />
+              {featuredProducts.length > 1 && (
+                <div className="cc-hero-controls" aria-label="Featured product controls">
+                  <button type="button" onClick={() => moveHero(-1)} aria-label="Previous featured product">‹</button>
+                  <span>{String(heroIndex + 1).padStart(2, "0")} / {String(featuredProducts.length).padStart(2, "0")}</span>
+                  <button
+                    type="button"
+                    onClick={() => setHeroPaused((paused) => !paused)}
+                    aria-label={heroPaused ? "Resume product rotation" : "Pause product rotation"}
+                    title={heroPaused ? "Resume rotation" : "Pause rotation"}
+                  >
+                    {heroPaused ? "▶" : "Ⅱ"}
+                  </button>
+                  <button type="button" onClick={() => moveHero(1)} aria-label="Next featured product">›</button>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+
+        {/* LOADING */}
 
         {loading && (
           <div className="text-center py-5">
-            <div className="spinner-border text-success" role="status">
-              <span className="visually-hidden">Loading...</span>
+            <div
+              className="spinner-border text-success"
+              role="status"
+            >
+              <span className="visually-hidden">
+                Loading...
+              </span>
             </div>
-            <p className="mt-2">Loading products...</p>
+
+            <p className="mt-2">
+              Loading products...
+            </p>
           </div>
         )}
 
+
+        {/* ERROR */}
+
         {error && (
-          <div className="alert alert-danger text-center" role="alert">
+          <div
+            className="alert alert-danger text-center"
+            role="alert"
+          >
             {error}
           </div>
         )}
 
-        {!loading && !error && (
+
+        {!loading && (
           <>
-            <div className="card shadow-sm mb-4">
-              <div className="card-body">
-                <div className="row g-3">
-                  <div className="col-md-6">
+
+            <section className="cc-home-section" id="categories">
+              <div className="cc-section-heading">
+                <div>
+                  <h2>Shop by category</h2>
+                  <p>Choose your gear and find the right fit for your game.</p>
+                </div>
+              </div>
+              <div className="cc-category-grid">
+                {displayCategories.slice(0, 6).map((item) => (
+                  <button
+                    type="button"
+                    className="cc-category-tile"
+                    key={item}
+                    onClick={() => selectCategory(item)}
+                  >
+                    <span className="cc-category-icon" aria-hidden="true">{getCategoryIcon(item)}</span>
+                    <strong>{item.replace(/^Cricket\s+/i, "")}</strong>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="cc-home-section cc-assistant-panel">
+              <div className="cc-assistant-copy">
+                <span className="cc-assistant-icon" aria-hidden="true">🤖</span>
+                <div>
+                  <p className="cc-eyebrow">Need a hand choosing?</p>
+                  <h2>AI shopping assistant</h2>
+                  <p>Tell us what you play and what you need. We’ll help find the right gear.</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setAssistantOpen(true)}>Ask the assistant</button>
+            </section>
+
+            {featuredProducts.length > 0 && (
+              <section className="cc-home-section">
+                <div className="cc-section-heading">
+                  <div>
+                    <h2>Trending products</h2>
+                    <p>Popular picks from the CricCart catalogue.</p>
+                  </div>
+                  <a href="#products" className="text-decoration-none">View all products</a>
+                </div>
+                <div className="cc-product-grid">
+                  {featuredProducts.map((product) => (
+                    <ProductCard key={`featured-${product._id}`} product={product} onAddToCart={addToCart} featured />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="cc-home-section cc-catalogue" id="products">
+              <div className="cc-section-heading">
+                <div>
+                  <p className="cc-eyebrow">Build your kit</p>
+                  <h2>All products</h2>
+                </div>
+                <span className="text-muted">{totalProducts} items</span>
+              </div>
+
+              <div className="cc-catalogue-tools">
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="🔍 Search products..."
+                      placeholder="Search products..."
+                      aria-label="Search products"
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setCurrentPage(1);
+                      }}
                     />
-                  </div>
-                  <div className="col-md-6">
                     <select
                       className="form-select"
                       value={category}
-                      onChange={(e) => setCategory(e.target.value)}
+                      aria-label="Filter by category"
+                      onChange={(e) => {
+                        setCategory(e.target.value);
+                        setCurrentPage(1);
+                      }}
                     >
                       {categories.map((cat) => (
-                        <option key={cat} value={cat === "All" ? "" : cat}>
+                        <option
+                          key={cat}
+                          value={cat === "All" ? "" : cat}
+                        >
                           {cat}
                         </option>
                       ))}
                     </select>
-                  </div>
-                </div>
+
               </div>
+              <div className="text-muted small mb-3" aria-live="polite">
+                Showing {totalProducts} product{totalProducts === 1 ? "" : "s"}
+              </div>
+              <div className="cc-product-grid">
+                {filteredProducts.map((product) => (
+                  <ProductCard key={product._id} product={product} onAddToCart={addToCart} />
+                ))}
             </div>
 
-            <p className="text-muted mb-4">
-              Showing {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""}
-            </p>
 
-            <div className="row g-4">
-              {filteredProducts.map((product) => (
-                <div key={product._id} className="col-md-4 col-lg-3">
-                  <div
-                    className="card h-100 shadow-sm"
-                    style={{ transition: "transform 0.2s" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-5px)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
-                  >
-                    <div style={{ overflow: "hidden", height: "200px", backgroundColor: "#f0f0f0" }}>
-                      {(() => {
-                        const placeholder = "https://via.placeholder.com/600x400?text=Cricket+Product";
-                        const imgSrc =
-                          product.imageUrl ||
-                          product.image ||
-                          (product.imageUrl && product.imageUrl.secure_url) ||
-                          placeholder;
-
-                        return (
-                          <img
-                            src={imgSrc}
-                            className="card-img-top"
-                            alt={product.title}
-                            style={{ height: "100%", objectFit: "cover" }}
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = "https://via.placeholder.com/600x400?text=No+Image";
-                            }}
-                          />
-                        );
-                      })()}
-                    </div>
-
-                    <div className="card-body d-flex flex-column">
-                      <h5 className="card-title" style={{ minHeight: "50px" }}>
-                        {product.title}
-                      </h5>
-                      <p className="card-text text-muted small">
-                        {product.description?.slice(0, 50)}...
-                      </p>
-
-                      <div className="mb-2">
-                        <span className="badge bg-info me-2">{product.category}</span>
-                        {product.stock && product.stock > 0 ? (
-                          <span className="badge bg-success">In stock: {product.stock}</span>
-                        ) : (
-                          <span className="badge bg-danger">Out of Stock</span>
-                        )}
-                      </div>
-
-                      <p className="fw-bold text-success" style={{ fontSize: "18px" }}>
-                        ₹{product.price}
-                      </p>
-
-                      <button
-                        onClick={() => addToCart(product)}
-                        className="btn btn-success w-100 mt-auto"
-                        style={{ backgroundColor: "#4ade80", borderColor: "#4ade80" }}
-                        disabled={!product.stock || product.stock < 1}
-                      >
-                        🛒 Add to Cart
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* NO PRODUCTS */}
 
             {filteredProducts.length === 0 && (
               <div className="text-center py-5">
-                <h4 className="text-muted">No products found</h4>
-                <p>Try adjusting your search or filters</p>
+
+                <h4 className="text-muted">
+                  No products found
+                </h4>
+
+                <p>
+                  Try adjusting your search
+                  or filters
+                </p>
+
               </div>
             )}
+
+
+            {/* =================================================
+                PAGINATION BUTTONS
+            ================================================= */}
+
+            {filteredProducts.length > 0 &&
+              totalPages > 1 && (
+                <div className="cc-pagination">
+
+                  {/* PREVIOUS */}
+
+                  <button
+                    onClick={() =>
+                      setCurrentPage(
+                        currentPage - 1
+                      )
+                    }
+                    disabled={
+                      currentPage === 1
+                    }
+                  >
+                    ← Previous
+                  </button>
+
+
+                  {/* PAGE NUMBER */}
+
+                  <span className="fw-bold">
+                    Page {currentPage} of{" "}
+                    {totalPages}
+                  </span>
+
+
+                  {/* NEXT */}
+
+                  <button
+                    onClick={() =>
+                      setCurrentPage(
+                        currentPage + 1
+                      )
+                    }
+                    disabled={
+                      currentPage ===
+                      totalPages
+                    }
+                  >
+                    Next →
+                  </button>
+
+                </div>
+              )}
+
+            </section>
           </>
         )}
+
       </div>
 
-      <div style={{ position: "fixed", right: "20px", bottom: "20px", zIndex: 1000 }}>
+
+      {/* =====================================================
+          AI ASSISTANT
+      ===================================================== */}
+
+      <div className="cc-chat-launcher">
+
         {!assistantOpen ? (
+
           <button
             type="button"
             className="btn btn-primary rounded-pill shadow"
-            style={{ backgroundColor: "#2563eb", borderColor: "#2563eb", padding: "12px 18px" }}
-            onClick={() => setAssistantOpen(true)}
+            style={{
+              backgroundColor: "#2563eb",
+              borderColor: "#2563eb",
+              padding: "12px 18px",
+            }}
+            onClick={() =>
+              setAssistantOpen(true)
+            }
           >
             🤖 AI Assistant
           </button>
+
         ) : (
-          <div
-            className="shadow-lg"
-            style={{
-              width: "360px",
-              background: "#ffffff",
-              borderRadius: "18px",
-              border: "1px solid #e5e7eb",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              className="d-flex align-items-center justify-content-between"
-              style={{ background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "#fff", padding: "12px 16px" }}
-            >
-              <strong>AI Shopping Assistant</strong>
+
+          <div className="cc-chat-window">
+
+            {/* ASSISTANT HEADER */}
+
+            <div className="cc-chat-header">
+
+              <strong>
+                AI Shopping Assistant
+              </strong>
+
               <button
                 type="button"
                 className="btn btn-link text-white p-0"
-                onClick={() => setAssistantOpen(false)}
+                onClick={() =>
+                  setAssistantOpen(false)
+                }
                 aria-label="Close assistant"
               >
                 ✕
               </button>
+
             </div>
 
-            <div style={{ height: "280px", overflowY: "auto", padding: "12px", backgroundColor: "#f8fafc" }}>
-              {chatMessages.map((message, index) => (
-                <div
-                  key={`${message.sender}-${index}`}
-                  className="mb-2 d-flex"
-                  style={{ justifyContent: message.sender === "user" ? "flex-end" : "flex-start" }}
-                >
+
+            {/* CHAT MESSAGES */}
+
+            <div
+              style={{
+                height: "280px",
+                overflowY: "auto",
+                padding: "12px",
+                backgroundColor:
+                  "#f8fafc",
+              }}
+            >
+
+              {chatMessages.map(
+                (message, index) => (
+
                   <div
+                    key={`${message.sender}-${index}`}
+                    className="mb-2 d-flex"
                     style={{
-                      maxWidth: "85%",
-                      padding: "10px 12px",
-                      borderRadius: "12px",
-                      backgroundColor: message.sender === "user" ? "#2563eb" : "#e2e8f0",
-                      color: message.sender === "user" ? "#fff" : "#0f172a",
-                      whiteSpace: "pre-line",
+                      justifyContent:
+                        message.sender ===
+                        "user"
+                          ? "flex-end"
+                          : "flex-start",
                     }}
                   >
-                    {message.text}
+
+                    <div
+                      style={{
+                        maxWidth: "85%",
+                        padding:
+                          "10px 12px",
+                        borderRadius:
+                          "12px",
+                        backgroundColor:
+                          message.sender ===
+                          "user"
+                            ? "#2563eb"
+                            : "#e2e8f0",
+                        color:
+                          message.sender ===
+                          "user"
+                            ? "#fff"
+                            : "#0f172a",
+                        whiteSpace:
+                          "pre-line",
+                      }}
+                    >
+                      {message.text}
+                    </div>
+
                   </div>
-                </div>
-              ))}
+
+                )
+              )}
+
 
               {assistantLoading && (
                 <div className="d-flex justify-content-start mb-2">
+
                   <div
                     style={{
                       padding: "10px 12px",
                       borderRadius: "12px",
-                      backgroundColor: "#e2e8f0",
+                      backgroundColor:
+                        "#e2e8f0",
                       color: "#0f172a",
                     }}
                   >
                     Thinking...
                   </div>
+
                 </div>
               )}
+
             </div>
 
-            <form onSubmit={handleAssistantSubmit} style={{ padding: "12px", borderTop: "1px solid #e5e7eb" }}>
+
+            {/* CHAT INPUT */}
+
+            <form
+              onSubmit={
+                handleAssistantSubmit
+              }
+              style={{
+                padding: "12px",
+                borderTop:
+                  "1px solid #e5e7eb",
+              }}
+            >
+
               <div className="input-group">
+
                 <input
                   type="text"
                   className="form-control"
                   value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
+                  onChange={(e) =>
+                    setAssistantInput(
+                      e.target.value
+                    )
+                  }
                   placeholder="Ask for product suggestions..."
-                  disabled={assistantLoading}
+                  disabled={
+                    assistantLoading
+                  }
                 />
+
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={assistantLoading || !assistantInput.trim()}
-                  style={{ backgroundColor: "#2563eb", borderColor: "#2563eb" }}
+                  disabled={
+                    assistantLoading ||
+                    !assistantInput.trim()
+                  }
+                  style={{
+                    backgroundColor:
+                      "#2563eb",
+                    borderColor:
+                      "#2563eb",
+                  }}
                 >
                   Send
                 </button>
+
               </div>
+
             </form>
+
           </div>
+
         )}
+
       </div>
-    </div>
+
+    </main>
   );
 }
 
